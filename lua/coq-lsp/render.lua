@@ -1,5 +1,21 @@
 local M = {}
 
+local function pp_to_string(value)
+  if type(value) == 'string' then
+    return value
+  elseif type(value) == 'table' then
+    if value == vim.NIL then
+      return ""
+    end
+    if value.text then
+      return value.text
+    end
+    return vim.inspect(value)
+  else
+    return tostring(value)
+  end
+end
+
 -- TODO: Render goals nicely.
 -- * see also lean.nvim infoview stuff
 -- * handle multi-line pp
@@ -13,16 +29,16 @@ function M.Goal(i, n, goal)
   local lines = {}
   lines[#lines + 1] = 'Goal ' .. i .. ' / ' .. n
   for _, hyp in ipairs(goal.hyps) do
-    local line = table.concat(hyp.names, ', ') .. ' : ' .. hyp.ty
-    if hyp.def then
-      line = line .. ' := ' .. hyp.def
+    local line = table.concat(hyp.names, ', ') .. ' : ' .. pp_to_string(hyp.ty)
+    if hyp.def and hyp.def ~= vim.NIL then
+      line = line .. ' := ' .. pp_to_string(hyp.def)
     end
     vim.list_extend(lines, vim.split(line, '\n'))
   end
   lines[#lines + 1] = ''
   lines[#lines + 1] = '========================================'
   lines[#lines + 1] = ''
-  vim.list_extend(lines, vim.split(goal.ty, '\n'))
+  vim.list_extend(lines, vim.split(pp_to_string(goal.ty), '\n'))
   return lines
 end
 
@@ -47,7 +63,7 @@ end
 ---@return string[]
 function M.Message(message)
   local lines = {}
-  vim.list_extend(lines, vim.split(message.text, '\n'))
+  vim.list_extend(lines, vim.split(pp_to_string(message.text), '\n'))
   return lines
 end
 
@@ -114,7 +130,7 @@ function M.GoalAnswer(answer, position)
     lines[#lines + 1] =
       'Error ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
     lines[#lines + 1] = ''
-    vim.list_extend(lines, vim.split(answer.error, '\n'))
+    vim.list_extend(lines, vim.split(pp_to_string(answer.error), '\n'))
   end
 
   return lines
