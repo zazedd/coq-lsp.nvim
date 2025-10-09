@@ -1,5 +1,54 @@
 local M = {}
 
+local function render_pp(pp)
+  if type(pp) == "string" then
+    return pp
+  end
+
+  if type(pp) ~= "table" or pp == vim.NIL then
+    return ""
+  end
+
+  local tag = pp[1]
+
+  if tag == "Pp_string" then
+    return pp[2] or ""
+
+  elseif tag == "Pp_glue" then
+    local parts = {}
+    local children = pp[2] or {}
+    for _, part in ipairs(children) do
+      table.insert(parts, render_pp(part))
+    end
+    return table.concat(parts)
+
+  elseif tag == "Pp_box" then
+    -- structure: { "Pp_box", box_type, content }
+    return render_pp(pp[3])
+
+  elseif tag == "Pp_tag" then
+    -- structure: { "Pp_tag", tag_name, content }
+    return render_pp(pp[3])
+
+  elseif tag == "Pp_force_newline" then
+    return "\n"
+
+  elseif tag == "Pp_print_break" then
+    -- structure: { "Pp_print_break", nspaces, indent }
+    local nspaces = tonumber(pp[2]) or 1
+    return string.rep(" ", nspaces)
+
+  elseif tag == "Pp_hovbox" or tag == "Pp_hbox" or tag == "Pp_vbox" then
+    -- layout hints, no output
+    return ""
+
+  else
+    -- fallback for unknown constructors
+    return ""
+  end
+end
+
+
 local function pp_to_string(value)
   if type(value) == 'string' then
     return value
@@ -10,7 +59,7 @@ local function pp_to_string(value)
     if value.text then
       return value.text
     end
-    return vim.inspect(value)
+    return render_pp(value)
   else
     return tostring(value)
   end
@@ -147,7 +196,7 @@ function M.GoalAnswer(answer, position)
     lines[#lines + 1] = ''
     lines[#lines + 1] = ''
     lines[#lines + 1] =
-      'Messages ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+      'Messages '
     lines[#lines + 1] = ''
     vim.list_extend(lines, M.Messages(answer.messages))
   end
@@ -155,19 +204,17 @@ function M.GoalAnswer(answer, position)
   if answer.goals then
     if #answer.goals.shelf > 0 then
       lines[#lines + 1] = ''
+      lines[#lines + 1] = 
+      ''
+      lines[#lines + 1] = 'Shelved ' .. #answer.goals.shelf .. ' Goals'
       lines[#lines + 1] = ''
-      lines[#lines + 1] =
-        'Shelved ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
-      lines[#lines + 1] = ''
-      vim.list_extend(lines, M.Goals(answer.goals.shelf))
     end
     if #answer.goals.given_up > 0 then
       lines[#lines + 1] = ''
-      lines[#lines + 1] = ''
       lines[#lines + 1] =
-        'Given Up ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+      ''
+      lines[#lines + 1] = 'Given up ' .. #answer.goals.given_up .. ' Goals'
       lines[#lines + 1] = ''
-      vim.list_extend(lines, M.Goals(answer.goals.given_up))
     end
   end
 
@@ -175,7 +222,7 @@ function M.GoalAnswer(answer, position)
     lines[#lines + 1] = ''
     lines[#lines + 1] = ''
     lines[#lines + 1] =
-      'Error ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+      'Error '
     lines[#lines + 1] = ''
     vim.list_extend(lines, vim.split(pp_to_string(answer.error), '\n'))
   end
